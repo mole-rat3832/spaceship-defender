@@ -139,9 +139,44 @@ function drawPlayer(p) {
   ctx.globalAlpha = 1;
 }
 
+// ---------- Shields (DEFLECTOR SHIELD / MOTHER SHIELD upgrades) ----------
+function drawShieldBubble(x, y, r, color, charges) {
+  ctx.globalCompositeOperation = 'lighter';
+  drawGlow(color, x, y, r * 1.3, 0.12);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.2;
+  // One dashed ring per charge
+  ctx.setLineDash([3, 6]);
+  for (let i = 0; i < charges; i++) {
+    ctx.globalAlpha = 0.45 + 0.15 * Math.sin(time * 3 + i);
+    ctx.lineDashOffset = time * (i % 2 ? -18 : 18);
+    ctx.beginPath();
+    ctx.arc(x, y, r + i * 5, 0, TAU);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+function drawShields() {
+  const g = game;
+  if (g.phase === 'blackhole' || g.phase === 'done') return;
+  if (g.motherShield > 0 && !g.mother.captured) drawShieldBubble(g.mother.x, g.mother.y, 62, '#6fdcff', g.motherShield);
+  const p = g.player;
+  if (g.shield > 0 && p.alive && !p.captured) drawShieldBubble(p.x, p.y, 22, skin().trim, g.shield);
+}
+
 // ---------- Meteors ----------
+// CLOAKED twist: real meteors fade in and out (hits and mines/crates stay visible).
+function meteorFade(m) {
+  if (mode === 'attract' || !game || !game.cfg.fx.cloak || m.harmless || m.decor) return 1;
+  return clamp(0.45 + 0.8 * Math.sin(time * 1.5 + m.phase), 0.04, 1);
+}
+
 function drawMeteor(m) {
   const spr = m.sprite;
+  const fade = meteorFade(m);
   ctx.save();
   applyStretch(m);
   ctx.translate(m.x, m.y);
@@ -156,24 +191,24 @@ function drawMeteor(m) {
     grad.addColorStop(0, rgba('#bff4ff', 0.75));
     grad.addColorStop(0.3, rgba('#6fdcff', 0.35));
     grad.addColorStop(1, rgba('#6fdcff', 0));
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = fade;
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.moveTo(-uy * w, ux * w);
     ctx.lineTo(tx, ty);
     ctx.lineTo(uy * w, -ux * w);
     ctx.fill();
-    drawGlow('#9adfff', 0, 0, m.r * 3, 0.6);
+    drawGlow('#9adfff', 0, 0, m.r * 3, 0.6 * fade);
   } else if (m.type === 'magma') {
     // Pulsing heat glow
-    drawGlow('#ff6a1a', 0, 0, m.r * 1.8, 0.22 + 0.08 * Math.sin(time * 4 + m.x));
+    drawGlow('#ff6a1a', 0, 0, m.r * 1.8, (0.22 + 0.08 * Math.sin(time * 4 + m.x)) * fade);
   } else if (m.type === 'crate') {
     drawGlow('#5dff9e', 0, 0, 30, 0.35 + 0.15 * Math.sin(time * 5));
   }
   if (m.homing) {
     // Magnetic meteors: a purple aura with a rotating dashed ring
-    drawGlow('#b48cff', 0, 0, m.r * 2, 0.35);
-    ctx.globalAlpha = 0.7;
+    drawGlow('#b48cff', 0, 0, m.r * 2, 0.35 * fade);
+    ctx.globalAlpha = 0.7 * fade;
     ctx.strokeStyle = '#b48cff';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([5, 7]);
@@ -186,14 +221,14 @@ function drawMeteor(m) {
 
   ctx.rotate(m.rot);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = fade;
   ctx.drawImage(spr.canvas, -spr.half, -spr.half, spr.half * 2, spr.half * 2);
 
   // Glowing cracks once a multi-hit meteor is damaged
   const damage = 1 - m.hp / m.maxHp;
   if (damage > 0 && m.cracks.length) {
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.6 + 0.4 * damage;
+    ctx.globalAlpha = (0.6 + 0.4 * damage) * fade;
     ctx.strokeStyle = METEOR_STYLE[m.type].crack || '#ffffff';
     ctx.lineWidth = 1.6;
     ctx.beginPath();
@@ -631,7 +666,11 @@ function drawHUD() {
   }
   text(status, W / 2, 58, 8, scol, 'center', salpha);
 
-  // Bottom-left: meteors left / distance
+  // Bottom-left: shield charges, then meteors left / distance
+  const shields = [];
+  if (up('shield')) shields.push(`SHIELD ${g.shield}`);
+  if (up('mshield')) shields.push(`BARRIER ${g.motherShield}`);
+  if (shields.length) text(shields.join('  '), 20, H - 40, 8, '#6fdcff', 'left', 0.8);
   if (g.infinite) text(`DISTANCE ${g.distance.toFixed(1)} LY`, 20, H - 20, 10, th.fg, 'left', 0.8);
   else if (g.phase === 'play' || g.phase === 'intro') text(`INCOMING ${pad(g.cfg.total - g.spawned, 2)}`, 20, H - 20, 10, th.fg, 'left', 0.8);
 
@@ -728,6 +767,7 @@ function drawGame() {
   g.meteors.forEach(drawMeteor);
   drawBullets(g.bullets);
   drawPlayer(g.player);
+  drawShields();
   drawParticles();
   if (g.blackHole) drawBlackHole(g.blackHole, 'front');
   if (g.wind) drawWind(g.wind);

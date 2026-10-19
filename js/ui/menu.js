@@ -9,7 +9,9 @@
      data-setting="key"   -> an option row; left/right changes it
    Screens can also have:
      data-escape="action" -> what ESC does on that screen
-     data-cols="5"        -> grid navigation (level select)
+     data-cols="8"        -> grid navigation (level select)
+   Rows inside side-by-side .menu-col columns (the shop) use
+   left/right to jump between columns.
 
    Menu.open() remembers where you came from, and Menu.back()
    returns there - so e.g. SETTINGS opened from the pause menu
@@ -97,7 +99,11 @@ const Menu = {
       return;
     }
     const cols = Number(this.current.dataset.cols) || 1;
-    if (horiz && cols === 1) return;
+    if (horiz && cols === 1) {
+      const col = it.closest('.menu-col');
+      if (col) this.navColumn(col, it, dir === 'left' ? -1 : 1);
+      return;
+    }
 
     const n = this.items.length;
     const step = dir === 'up' ? -cols : dir === 'down' ? cols : dir === 'left' ? -1 : 1;
@@ -107,6 +113,17 @@ const Menu = {
     let guard = n;
     while (this.isDisabled(i) && guard-- > 0) i = (i + s + n) % n;
     this.select(i);
+  },
+
+  // Jump to the row at the same height in the neighboring column.
+  navColumn(col, it, step) {
+    const cols = [...col.parentElement.children].filter(c => c.classList.contains('menu-col'));
+    const other = cols[cols.indexOf(col) + step];
+    if (!other) return;
+    const rows = [...other.querySelectorAll('.item')];
+    const pos = [...col.querySelectorAll('.item')].indexOf(it);
+    const target = rows[Math.min(pos, rows.length - 1)];
+    if (target) this.select(this.items.indexOf(target));
   },
 
   activate() {
@@ -323,27 +340,29 @@ function buildLevelGrid() {
 
 // ---------- Shop ----------
 // Rows use data-shop="up:<id>" for upgrades and "skin:<id>" for paint jobs.
+// Upgrades and paint jobs sit in two side-by-side columns.
 function buildShop() {
   const list = $('shop-list');
   list.innerHTML = '';
-  const head = txt => {
+  const column = (title, ids) => {
+    const col = document.createElement('div');
+    col.className = 'shop-col menu-col';
     const h = document.createElement('div');
     h.className = 'shop-head';
-    h.textContent = txt;
-    list.appendChild(h);
+    h.textContent = title;
+    col.appendChild(h);
+    for (const id of ids) {
+      const r = document.createElement('div');
+      r.className = 'item shop-row';
+      r.dataset.action = 'buy';
+      r.dataset.shop = id;
+      col.appendChild(r);
+      renderShopRow(r);
+    }
+    list.appendChild(col);
   };
-  const row = id => {
-    const r = document.createElement('div');
-    r.className = 'item shop-row';
-    r.dataset.action = 'buy';
-    r.dataset.shop = id;
-    list.appendChild(r);
-    renderShopRow(r);
-  };
-  head('UPGRADES');
-  UPGRADES.forEach(u => row('up:' + u.id));
-  head('PAINT JOBS');
-  Object.keys(SKINS).forEach(id => row('skin:' + id));
+  column('UPGRADES', UPGRADES.map(u => 'up:' + u.id));
+  column('PAINT JOBS', Object.keys(SKINS).map(id => 'skin:' + id));
   $('shop-credits').textContent = progress.credits;
 }
 

@@ -189,9 +189,9 @@ h2.danger {
 /* ---------- Level select ---------- */
 .level-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.9cqw;
-  width: 82cqw;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.7cqw;
+  width: 92cqw;
 }
 
 .level-card {
@@ -209,16 +209,16 @@ h2.danger {
 }
 
 .level-card .lnum {
-  font-size: 1.9cqw;
+  font-size: 1.7cqw;
 }
 
 .level-card .lname {
-  font-size: 0.75cqw;
+  font-size: 0.62cqw;
   line-height: 1.4;
 }
 
 .level-card .ltwist {
-  font-size: 0.6cqw;
+  font-size: 0.52cqw;
   color: var(--warn);
   min-height: 0.9cqw;
 }
@@ -246,11 +246,23 @@ h2.danger {
   text-shadow: 0 0 0.8cqw var(--warn);
 }
 
+#menu-shop {
+  gap: 1.2cqw;
+}
+
+/* Two columns: upgrades on the left, paint jobs on the right */
 .shop-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 3.4cqw;
+  width: 90cqw;
+}
+
+.shop-col {
   display: flex;
   flex-direction: column;
-  gap: 0.35cqw;
-  width: 70cqw;
+  gap: 0.3cqw;
 }
 
 .shop-head {
@@ -264,11 +276,11 @@ h2.danger {
 
 .shop-row {
   display: grid;
-  grid-template-columns: 1fr auto 13cqw;
+  grid-template-columns: 1fr auto 9cqw;
   align-items: center;
-  gap: 1.5cqw;
-  font-size: 1.15cqw;
-  padding: 0.55cqw 1.4cqw;
+  gap: 1cqw;
+  font-size: 0.95cqw;
+  padding: 0.45cqw 1cqw;
   text-align: left;
 }
 

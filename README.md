@@ -12,7 +12,7 @@ Built with plain HTML, CSS and JavaScript. No frameworks, no build step and no i
 ## Features
 
 - **Protect the mothership:** hits push it off course and spin it out. After a moment its autopilot steers it back.
-- **25 mission levels, each with its own twist** (see [the level list](#levels)), ending in a **black hole finale**.
+- **40 mission levels, each with its own twist** (see [the level list](#levels)), ending in a **black hole finale**.
 - **Infinite Voyage:** an endless mode where the course never ends. Travel through sectors and rack up score as the meteor belt gets harder. Each new sector rolls a random twist.
 - **Meteor types:**
   - rock: 1 hit
@@ -24,8 +24,8 @@ Built with plain HTML, CSS and JavaScript. No frameworks, no build step and no i
 - **Special objects:** space mines (shoot them to blow up everything nearby) and supply crates (hull repair, coolant or credits).
 - **Blaster heat and jamming:** spamming fire overheats your blaster, and a hot blaster can jam. Tap **F** to clear it.
 - **Hangar shop:** spend the credits you earn on upgrades and paint jobs.
-  - Upgrades: hull, fire rate, heat sinks, jam guard, twin blasters, engines, mothership stabilizers and armor.
-  - Paint jobs: 5 color schemes for your ship.
+  - Upgrades: hull, fire rate, heat sinks, jam guard, twin blasters, engines, mothership stabilizers and armor, long-range bolts, piercing bolts, a deflector shield, a mothership shield and a salvage drone.
+  - Paint jobs: 11 color schemes for your ship.
 - **Daily quests:** three new goals every day, worth bonus credits.
 - **Graphics:** scrolling nebulas, planets, twinkling stars, shooting stars, and glowing explosions.
 - **Controls:** three control styles (Classic, Direct and Mouse Aim) and fully **rebindable keys**, including mouse buttons.
@@ -81,7 +81,22 @@ The game gets steadily harder from level to level, and each level adds its own *
 | 22 | Slalom | Course Change | The course weaves left and right, so you defend a moving target. |
 | 23 | Lodestone | Magnetic | Purple magnetic meteors home in on the mothership. |
 | 24 | The Gauntlet | The Gauntlet | A bit of everything at once. |
-| 25 | Event Horizon | Event Horizon | A black hole pulls on the meteors... and then on everything else. |
+| 25 | The Hive | Swarm | A huge swarm of tiny meteors. |
+| 26 | Looking Glass | Mirror Drive | Left and right steering are swapped. |
+| 27 | Bedrock | Hardened | Every meteor takes one extra hit. |
+| 28 | Blindside | Ambush | Every meteor comes from behind. |
+| 29 | Phantoms | Cloaked | Meteors fade in and out of sight. |
+| 30 | Afterburn | Acceleration | Meteors keep speeding up the longer they fly. |
+| 31 | Dust Bowl | Short Range | Your bolts fizzle out after a short distance. |
+| 32 | Avalanche | Boulder Field | Only big meteors, with plenty of iron. |
+| 33 | Rough Ride | Turbulence | The course bobs up and down. |
+| 34 | Meltdown | Coolant Leak | Your blaster cools down at half speed. |
+| 35 | Pincer Move | Pincer | Pairs of meteors from the left and right at once. |
+| 36 | Whiteout | Ice Storm | Fast comets blown around by a solar wind. |
+| 37 | Night Hunt | Night Hunters | Darkness plus magnetic meteors. |
+| 38 | Storm Front | Storm Front | Solar wind, extra jams and EMP blasts together. |
+| 39 | Last Stand | Last Stand | Every kind of meteor, faster than ever. |
+| 40 | Event Horizon | Event Horizon | A black hole pulls on the meteors... and then on everything else. |
 
 Twists are defined in the `TWISTS` table in `js/core/config.js`. Each one is a bundle of *mods*: some change the spawn rules (speed, count, sides, sizes), and others switch on effects that `js/game/game.js` handles in `updateTwists()`. To make a new level, add a twist (or reuse one) and add an entry to `LEVELS`.
 
@@ -119,7 +134,7 @@ The scripts are plain `<script>` tags, not ES modules. Browsers block modules on
 
 `main.js` calls `frame()` about 60 times a second. Each frame it works out `dt`, the seconds since the last frame, and moves everything by `speed × dt`, so the game runs at the same speed on fast and slow computers. Then it calls `render()` to draw.
 
-The whole app is in one **mode** at a time: `attract` (main menu), `game`, `paused` or `over`. Inside a game, each level moves through **phases**: `intro` → `play` → `clear`, plus `blackhole` for the level 25 finale.
+The whole app is in one **mode** at a time: `attract` (main menu), `game`, `paused` or `over`. Inside a game, each level moves through **phases**: `intro` → `play` → `clear`, plus `blackhole` for the level 40 finale.
 
 ### Keeping the mothership on course
 

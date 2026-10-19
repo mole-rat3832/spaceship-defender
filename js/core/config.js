@@ -104,13 +104,19 @@ const SKINS = {
   stealth:  { label: 'STEALTH',   cost: 600,  hull: '#8a93a3', trim: '#3e4655', cockpit: '#b48cff', engine: '#9d6bff', bullet: '#c9a6ff' },
   gold:     { label: 'GOLD RUSH', cost: 800,  hull: '#fff1c2', trim: '#ffc93d', cockpit: '#fff7d6', engine: '#ffb13d', bullet: '#ffe27a' },
   neon:     { label: 'NEON',      cost: 1000, hull: '#e6fff3', trim: '#39ff9c', cockpit: '#ff5ad1', engine: '#ff5ad1', bullet: '#5dff9e' },
+  arctic:   { label: 'ARCTIC',    cost: 1200, hull: '#f2fbff', trim: '#9fe8ff', cockpit: '#ffffff', engine: '#7fd4ff', bullet: '#cff6ff' },
+  toxic:    { label: 'TOXIC',     cost: 1300, hull: '#d9f2c4', trim: '#a6ff2e', cockpit: '#eaff7a', engine: '#7dff3a', bullet: '#c6ff5a' },
+  sunset:   { label: 'SUNSET',    cost: 1400, hull: '#ffe0cc', trim: '#ff7a3d', cockpit: '#ffd1f0', engine: '#ff4fa8', bullet: '#ffa86b' },
+  royal:    { label: 'ROYAL',     cost: 1600, hull: '#dcd8ff', trim: '#6a5cff', cockpit: '#ffe27a', engine: '#8f7dff', bullet: '#b0a6ff' },
+  obsidian: { label: 'OBSIDIAN',  cost: 1800, hull: '#4a4f5c', trim: '#ff2e4d', cockpit: '#ff8a9a', engine: '#ff2e4d', bullet: '#ff5a72' },
+  chrome:   { label: 'CHROME',    cost: 2200, hull: '#f4f7fb', trim: '#c0cad8', cockpit: '#7df9ff', engine: '#e8f4ff', bullet: '#ffffff' },
 };
 
 // ---------- Upgrades (bought in the shop) ----------
 // costs[i] is the price of level i+1. The number of costs is the max level.
 // What each upgrade actually does is applied in progress.js (blasterStats etc.)
 const UPGRADES = [
-  { id: 'hull',       label: 'HULL PLATING',    costs: [300, 700],      desc: '+1 DEFENDER HULL. TAKE ONE MORE HIT BEFORE GAME OVER.' },
+  { id: 'hull',       label: 'HULL PLATING',    costs: [300, 700, 1300], desc: '+1 DEFENDER HULL. TAKE ONE MORE HIT BEFORE GAME OVER.' },
   { id: 'rapid',      label: 'RAPID FIRE',      costs: [150, 300, 550], desc: 'BLASTER FIRES FASTER.' },
   { id: 'cooling',    label: 'HEAT SINKS',      costs: [150, 300, 550], desc: 'BLASTER HEATS UP SLOWER AND COOLS DOWN FASTER.' },
   { id: 'jamguard',   label: 'JAM GUARD',       costs: [200, 450],      desc: 'FEWER JAMS, AND FEWER F PRESSES TO CLEAR ONE.' },
@@ -118,6 +124,11 @@ const UPGRADES = [
   { id: 'engine',     label: 'ENGINE BOOST',    costs: [150, 350],      desc: 'MORE THRUST AND A HIGHER TOP SPEED.' },
   { id: 'stabilizer', label: 'MOTHER STABILIZERS', costs: [250, 500, 800], desc: 'MOTHERSHIP AUTOPILOT COMES BACK ONLINE SOONER AFTER A HIT.' },
   { id: 'armor',      label: 'MOTHER ARMOR',    costs: [250, 500, 800], desc: 'METEORS PUSH THE MOTHERSHIP OFF COURSE LESS.' },
+  { id: 'range',      label: 'LONG-RANGE BOLTS', costs: [200, 450],     desc: 'BOLTS FLY FASTER AND TRAVEL FARTHER.' },
+  { id: 'pierce',     label: 'PIERCING BOLTS',  costs: [700, 1400],     desc: 'EACH BOLT SMASHES THROUGH ONE MORE METEOR PER LEVEL AND KEEPS GOING.' },
+  { id: 'shield',     label: 'DEFLECTOR SHIELD', costs: [600, 1200],    desc: 'BLOCKS ONE HIT TO YOUR DEFENDER PER LEVEL OR SECTOR (TWO AT MAX).' },
+  { id: 'mshield',    label: 'MOTHER SHIELD',   costs: [500, 1000, 1600], desc: 'STOPS ONE METEOR PER UPGRADE LEVEL FROM HITTING THE MOTHERSHIP, EVERY LEVEL OR SECTOR.' },
+  { id: 'salvage',    label: 'SALVAGE DRONE',   costs: [250, 550, 900], desc: '25% CHANCE PER LEVEL TO SALVAGE +1 EXTRA CREDIT FROM EVERY METEOR.' },
 ];
 const UPGRADE_MAP = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 
@@ -141,8 +152,15 @@ const UPGRADE_MAP = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 //   magma/iron/cometChance  type odds           weave     course sways (px)
 //   mineChance / giantChance / homingChance     well      gravity-well planet
 //   splitCount   pieces per split                bhPull    black hole tugs meteors
+//                                                mirror    left/right steering swapped
+//                                                hpBonus   extra hits for every meteor
+//                                                accel     meteors speed up as they fly
+//                                                rangeMult blaster bolt range x
+//                                                coolMult  blaster cooling x
+//                                                bob       course bobs up/down (px)
+//                                                cloak     meteors fade in and out of sight
 // =========================================================
-const MAX_LEVEL = 25;
+const MAX_LEVEL = 40;
 const BASE_HITS = 3; // defender hits allowed before game over (hull upgrades add more)
 
 const TWISTS = {
@@ -171,10 +189,25 @@ const TWISTS = {
   weave:     { label: 'COURSE CHANGE',   tip: 'THE MOTHERSHIP IS WEAVING THROUGH THE BELT - KEEP UP',      mods: { weave: 150 } },
   magnet:    { label: 'MAGNETIC',        tip: 'PURPLE MAGNETIC METEORS STEER TOWARD THE MOTHERSHIP',       mods: { homingChance: 0.35 } },
   gauntlet:  { label: 'THE GAUNTLET',    tip: 'EVERYTHING AT ONCE. GOOD LUCK',                             mods: { burst: 2, speedMult: 1.1, mineChance: 0.1, magmaChance: 0.25, ironChance: 0.2, cometChance: 0.2, homingChance: 0.1 } },
+  swarm:     { label: 'SWARM',           tip: 'A HUGE SWARM OF TINY METEORS - KEEP THAT BLASTER COOL',     mods: { sizePool: [1], burst: 2, totalMult: 1.8, intervalMult: 0.45 } },
+  mirror:    { label: 'MIRROR DRIVE',    tip: 'YOUR STEERING IS CROSSED - LEFT IS RIGHT AND RIGHT IS LEFT', mods: { mirror: true } },
+  armored:   { label: 'HARDENED',        tip: 'EVERY METEOR TAKES ONE EXTRA HIT TO BREAK',                 mods: { hpBonus: 1, totalMult: 0.75 } },
+  ambush:    { label: 'AMBUSH',          tip: 'EVERY METEOR SNEAKS UP FROM BEHIND',                        mods: { sides: [2], spread: 0.4 } },
+  cloak:     { label: 'CLOAKED',         tip: 'THE METEORS FLICKER IN AND OUT OF SIGHT',                   mods: { cloak: true } },
+  accel:     { label: 'ACCELERATION',    tip: 'METEORS SPEED UP THE LONGER THEY FLY - HIT THEM EARLY',     mods: { accel: 0.35, speedMult: 0.85 } },
+  short:     { label: 'SHORT RANGE',     tip: 'DUST CLOUDS - YOUR BOLTS FIZZLE OUT AFTER A SHORT DISTANCE', mods: { rangeMult: 0.45 } },
+  boulders:  { label: 'BOULDER FIELD',   tip: 'ONLY BIG, HEAVY METEORS - AND PLENTY OF IRON',              mods: { sizePool: [3], ironChance: 0.3, totalMult: 0.7 } },
+  bob:       { label: 'TURBULENCE',      tip: 'THE MOTHERSHIP BOBS UP AND DOWN THROUGH ROUGH SPACE',       mods: { bob: 70 } },
+  coolant:   { label: 'COOLANT LEAK',    tip: "YOUR BLASTER COOLS AT HALF SPEED - DON'T WASTE SHOTS",      mods: { coolMult: 0.5 } },
+  pincer:    { label: 'PINCER',          tip: 'METEORS STRIKE FROM LEFT AND RIGHT AT THE SAME TIME',       mods: { sides: [1, 3], burst: 2, oppositePairs: true } },
+  whiteout:  { label: 'ICE STORM',       tip: 'A WIND-BLOWN BLIZZARD OF FAST COMETS',                      mods: { cometChance: 0.45, wind: 70 } },
+  nighthunt: { label: 'NIGHT HUNTERS',   tip: 'DARKNESS - AND MAGNETIC METEORS HUNTING THE MOTHERSHIP',    mods: { dark: true, homingChance: 0.3 } },
+  storm:     { label: 'STORM FRONT',     tip: 'SOLAR WIND, STATIC JAMS AND EMP BLASTS ALL AT ONCE',        mods: { wind: 70, jamMult: 2, emp: { every: 13, dur: 2 } } },
+  laststand: { label: 'LAST STAND',      tip: 'EVERY KIND OF METEOR, FASTER THAN EVER. HOLD THE LINE',     mods: { burst: 2, speedMult: 1.1, mineChance: 0.08, magmaChance: 0.25, ironChance: 0.2, cometChance: 0.15, homingChance: 0.15, giantChance: 0.12 } },
   horizon:   { label: 'EVENT HORIZON',   tip: 'A BLACK HOLE LIES AHEAD - ITS GRAVITY PULLS ON THE METEORS', mods: { bhPull: 45 } },
 };
 
-// The 25 mission levels. Base difficulty ramps up with the level number;
+// The 40 mission levels. Base difficulty ramps up with the level number;
 // the twist makes each one different.
 const LEVELS = [
   { name: 'FIRST CONTACT', twist: 'basic' },
@@ -201,12 +234,28 @@ const LEVELS = [
   { name: 'SLALOM',        twist: 'weave' },
   { name: 'LODESTONE',     twist: 'magnet' },
   { name: 'THE GAUNTLET',  twist: 'gauntlet' },
+  { name: 'THE HIVE',      twist: 'swarm' },
+  { name: 'LOOKING GLASS', twist: 'mirror' },
+  { name: 'BEDROCK',       twist: 'armored' },
+  { name: 'BLINDSIDE',     twist: 'ambush' },
+  { name: 'PHANTOMS',      twist: 'cloak' },
+  { name: 'AFTERBURN',     twist: 'accel' },
+  { name: 'DUST BOWL',     twist: 'short' },
+  { name: 'AVALANCHE',     twist: 'boulders' },
+  { name: 'ROUGH RIDE',    twist: 'bob' },
+  { name: 'MELTDOWN',      twist: 'coolant' },
+  { name: 'PINCER MOVE',   twist: 'pincer' },
+  { name: 'WHITEOUT',      twist: 'whiteout' },
+  { name: 'NIGHT HUNT',    twist: 'nighthunt' },
+  { name: 'STORM FRONT',   twist: 'storm' },
+  { name: 'LAST STAND',    twist: 'laststand' },
   { name: 'EVENT HORIZON', twist: 'horizon' },
 ];
 
 // Twists that Infinite Voyage can roll for each new sector.
 const INFINITE_TWISTS = ['wind', 'dark', 'ion', 'splitters', 'emp', 'mines', 'supply', 'giants',
-  'zerog', 'shower', 'magnet', 'heat', 'comet', 'magma', 'iron', 'pairs', 'weave'];
+  'zerog', 'shower', 'magnet', 'heat', 'comet', 'magma', 'iron', 'pairs', 'weave',
+  'swarm', 'armored', 'cloak', 'accel', 'short', 'boulders', 'bob', 'coolant', 'pincer', 'ambush'];
 
 // Apply a twist's mods on top of a base config.
 function applyTwist(cfg, key) {
@@ -234,15 +283,18 @@ function applyTwist(cfg, key) {
 }
 
 // Build the spawn rules for a mission level. Everything ramps up with n.
+// After level 25 the ramp slows to half speed (r), so the late levels get
+// their difficulty from the twists rather than from raw meteor speed.
 function levelConfig(n) {
   const info = LEVELS[n - 1];
+  const r = n <= 25 ? n : 25 + (n - 25) * 0.5;
   const cfg = {
     name: info.name,
-    total: 6 + Math.round(n * 1.4),                  // meteors spawned this wave
-    interval: Math.max(1.0, 3.0 - n * 0.08),         // seconds between spawns
+    total: 6 + Math.round(r * 1.4),                  // meteors spawned this wave
+    interval: Math.max(1.0, 3.0 - r * 0.08),         // seconds between spawns
     burst: n >= 12 ? 2 : 1,                          // meteors per spawn
-    speed: 40 + n * 3.2,                             // base meteor speed (px/s)
-    spread: Math.max(0.1, 0.26 - n * 0.006),         // aim randomness in radians (lower = more accurate)
+    speed: 40 + r * 3.2,                             // base meteor speed (px/s)
+    spread: Math.max(0.1, 0.26 - r * 0.006),         // aim randomness in radians (lower = more accurate)
     magmaChance: n >= 2 ? Math.min(0.3, 0.15 + (n - 2) * 0.01) : 0,
     ironChance: n >= 4 ? Math.min(0.25, 0.1 + (n - 4) * 0.01) : 0,
     cometChance: n >= 6 ? Math.min(0.2, 0.08 + (n - 6) * 0.008) : 0,

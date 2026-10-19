@@ -29,7 +29,7 @@ function newPlayer() {
     alive: true,
     respawn: 0,            // countdown to respawn after being hit
     thrusting: false,
-    captured: false,       // swallowed by the black hole (level 25 finale)
+    captured: false,       // swallowed by the black hole (final level finale)
     stretch: null,         // squash/stretch while falling into the black hole
   };
 }
@@ -50,7 +50,8 @@ function newMother() {
 
 // ---------- Meteors ----------
 // type: 'rock' | 'magma' | 'iron' | 'comet'    size: 3 (large), 2, 1 (small)
-function makeMeteor(x, y, vx, vy, size, type) {
+// extraHp: bonus hits on top of the normal amount (HARDENED twist)
+function makeMeteor(x, y, vx, vy, size, type, extraHp = 0) {
   const r = METEOR_RADIUS[size];
 
   // Random lumpy outline: points around a circle at random distances
@@ -66,6 +67,7 @@ function makeMeteor(x, y, vx, vy, size, type) {
   // and giants (size 4) take 2 extra hits on top of that
   let hp = type === 'magma' ? 2 : type === 'iron' ? Math.min(size, 3) : 1;
   if (size === 4) hp += 2;
+  hp += extraHp;
 
   // Crack lines that glow once a multi-hit meteor has been damaged
   const cracks = [];
@@ -92,6 +94,7 @@ function makeMeteor(x, y, vx, vy, size, type) {
     decor: false,          // true = scenery only (black hole finale), no score/collisions
     harmless: false,       // true = doesn't have to be cleared to finish the level (mines, crates)
     homing: false,         // true = steers toward the mothership (MAGNETIC twist)
+    phase: rand(0, TAU),   // where it is in its fade cycle (CLOAKED twist)
     stretch: null,
   };
   m.sprite = buildMeteorSprite(m);
@@ -117,7 +120,7 @@ function makeWell() {
   return { x: W * 0.2, y: H * 0.32, r: 30, sprite: buildPlanetSprite(WELL_PLANET, 30, false) };
 }
 
-// ---------- Black hole (level 25, the final level) ----------
+// ---------- Black hole (level 40, the final level) ----------
 // The accretion disk is a ring of glowing particles orbiting the hole.
 function makeBlackHole() {
   const disk = [];

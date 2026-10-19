@@ -13,7 +13,7 @@
      'intro'     - level name banner, no meteors yet
      'play'      - meteors spawning
      'clear'     - wave beaten, bonus tally
-     'blackhole' - level 25 finale cinematic
+     'blackhole' - final level (40) black hole cinematic
      'done'      - finished (victory screen showing)
    ========================================================= */
 
@@ -77,12 +77,20 @@ function startLevel(n) {
   g.courseX = COURSE_X; // the point the mothership steers for (moves with the COURSE CHANGE twist)
   g.courseY = COURSE_Y;
   g.courseVx = 0;
+  g.courseVy = 0;
+  rechargeShields();
   initTwistState();
 
   // New scenery for each level (the final level gets the black-hole palette)
   setNebula(g.infinite ? 0 : n === MAX_LEVEL ? 5 : (n - 1) % 5);
   space.speed = 1;
   Sound.levelStart();
+}
+
+// DEFLECTOR SHIELD and MOTHER SHIELD upgrades recharge every level / sector.
+function rechargeShields() {
+  game.shield = up('shield');
+  game.motherShield = up('mshield');
 }
 
 // "RESTART" in the pause menu: replay the current level from its start.
@@ -225,7 +233,9 @@ function updatePlayer(dt) {
   }
 
   const on = !g.ending; // controls lock once the game is ending
-  const L = on && keys.left, R = on && keys.right, U = on && keys.up, D = on && keys.down;
+  let L = on && keys.left, R = on && keys.right;
+  const U = on && keys.up, D = on && keys.down;
+  if (g.cfg.fx.mirror) [L, R] = [R, L]; // MIRROR DRIVE twist: steering is crossed
   const engine = 1 + 0.15 * up('engine');
   const zeroG = !!g.cfg.fx.zeroG; // ZERO DRAG twist: the ship barely slows down
   p.thrusting = false;
@@ -287,7 +297,7 @@ function updatePlayer(dt) {
   // Blaster heat: cools slowly while firing, faster once you stop
   const b = blasterStats();
   p.lastShot += dt;
-  const cool = p.lastShot > 0.3 ? b.coolRate + b.idleCool : b.coolRate;
+  const cool = (p.lastShot > 0.3 ? b.coolRate + b.idleCool : b.coolRate) * (g.cfg.fx.coolMult || 1); // COOLANT LEAK twist
   p.heat = Math.max(0, p.heat - cool * dt);
   if (p.overheated && p.heat <= 0.3) p.overheated = false;
 
@@ -319,17 +329,20 @@ function tryFire() {
 function fire() {
   const p = game.player;
   const b = blasterStats();
+  const fx = game.cfg.fx;
   const c = Math.cos(p.a), s = Math.sin(p.a);
   // Twin blasters fire two bolts side by side
   const offsets = b.twin ? [-5, 5] : [0];
   for (const o of offsets) {
     game.bullets.push({
       x: p.x + c * 16 - s * o, y: p.y + s * 16 + c * o,
-      vx: c * 640 + p.vx * 0.5, vy: s * 640 + p.vy * 0.5,
-      life: 0.85, dead: false,
+      vx: c * b.boltSpeed + p.vx * 0.5, vy: s * b.boltSpeed + p.vy * 0.5,
+      life: b.boltLife * (fx.rangeMult || 1), // SHORT RANGE twist
+      pierce: b.pierce,  // PIERCING BOLTS: meteors it can still smash through
+      lastHit: null,
+      dead: false,
     });
   }
-  const fx = game.cfg.fx;
   p.cooldown = b.cooldown;
   p.lastShot = 0;
   p.heat += b.heatPerShot * (fx.heatMult || 1); // HEAT WAVE twist
@@ -376,6 +389,17 @@ function respawnPlayer() {
 function hitPlayer() {
   const g = game;
   const p = g.player;
+  // DEFLECTOR SHIELD: soak up the hit instead
+  if (g.shield > 0) {
+    g.shield--;
+    p.invuln = 1.5;
+    shockwave(p.x, p.y, 60, skin().trim, 0.5);
+    burst(p.x, p.y, 16, skin().trim, 140, 0.5, 4);
+    addShake(6);
+    addFloater(g.shield ? `SHIELD! ${g.shield} LEFT` : 'SHIELD DOWN!', p.x, p.y - 24, skin().trim, 10);
+    Sound.clink();
+    return;
+  }
   p.alive = false;
   p.respawn = 1.6;
   g.lives--;
@@ -420,7 +444,7 @@ function updateMother(dt) {
     // itself moves (COURSE CHANGE twist) the ship keeps pace instead of lagging.
     mo.a = wrapAngle(mo.a);
     mo.vx += (-(mo.x - g.courseX) * 2.0 - (mo.vx - g.courseVx) * 2.6) * dt;
-    mo.vy += (-(mo.y - g.courseY) * 2.0 - mo.vy * 2.6) * dt;
+    mo.vy += (-(mo.y - g.courseY) * 2.0 - (mo.vy - g.courseVy) * 2.6) * dt;
     mo.va += (-mo.a * 6 - mo.va * 4.5) * dt;
   }
 
@@ -439,6 +463,18 @@ function impactMother(m) {
   const g = game;
   const mo = g.mother;
   const diff = DIFFICULTY[settings.difficulty];
+
+  // MOTHER SHIELD: the barrier destroys the meteor before it can push the ship
+  if (g.motherShield > 0) {
+    g.motherShield--;
+    m.dead = true;
+    explode(m.x, m.y, Math.min(m.size, 3), METEOR_STYLE[m.type].edge);
+    shockwave(mo.x, mo.y, 80, '#6fdcff', 0.5);
+    addFloater(g.motherShield ? `BARRIER! ${g.motherShield} LEFT` : 'BARRIER DOWN!', mo.x, mo.y - 50, '#6fdcff', 10);
+    Sound.clink();
+    return;
+  }
+
   const typeMult = { iron: 1.6, comet: 1.4, magma: 1.2, mine: 4 }[m.type] || 1; // a mine blast shoves hard
   const mass = METEOR_MASS[m.size] * typeMult;
 
@@ -518,7 +554,7 @@ function spawnMeteor(side = pick(game.cfg.sides)) {
 
   // Aim at the mothership, with some randomness so not every meteor hits
   const aim = Math.atan2(mo.y - y, mo.x - x) + rand(-cfg.spread, cfg.spread);
-  const m = makeMeteor(x, y, Math.cos(aim) * speed, Math.sin(aim) * speed, size, type);
+  const m = makeMeteor(x, y, Math.cos(aim) * speed, Math.sin(aim) * speed, size, type, cfg.fx.hpBonus || 0);
   // MAGNETIC: this one will steer toward the mothership
   if (type !== 'comet' && Math.random() < cfg.homingChance) m.homing = true;
   g.meteors.push(m);
@@ -559,7 +595,14 @@ function updateSpawning(dt) {
 function updateMeteors(dt) {
   const g = game;
   const finale = g.phase === 'blackhole';
+  const accel = !finale && g.cfg.fx.accel;
   for (const m of g.meteors) {
+    // ACCELERATION: meteors keep speeding up (up to a limit)
+    if (accel && !m.harmless && Math.hypot(m.vx, m.vy) < 340) {
+      const k = 1 + accel * dt;
+      m.vx *= k;
+      m.vy *= k;
+    }
     // MAGNETIC: turn toward the mothership (keeping the same speed)
     if (m.homing && !finale) {
       const sp = Math.hypot(m.vx, m.vy);
@@ -621,7 +664,7 @@ function destroyMeteor(m, scored) {
 
   if (scored) {
     addScore(SCORE[m.type][m.size], m.x, m.y);
-    addCredits(CREDIT[m.type]);
+    addCredits(CREDIT[m.type] + salvageBonus());
     questEvent('kill');
     if (m.type !== 'rock') questEvent(m.type);
   }
@@ -637,7 +680,7 @@ function destroyMeteor(m, scored) {
     for (let i = 0; i < pieces; i++) {
       const a = heading + (i - (pieces - 1) / 2) * fan * (pieces === 2 ? 1.6 : 1);
       const s = speed * rand(1.1, 1.4);
-      g.meteors.push(makeMeteor(m.x, m.y, Math.cos(a) * s, Math.sin(a) * s, m.size - 1, childType));
+      g.meteors.push(makeMeteor(m.x, m.y, Math.cos(a) * s, Math.sin(a) * s, m.size - 1, childType, g.cfg.fx.hpBonus || 0));
     }
   }
 }
@@ -698,11 +741,17 @@ function handleCollisions() {
   for (const b of g.bullets) {
     if (b.dead) continue;
     for (const m of g.meteors) {
-      if (m.dead) continue;
+      if (m.dead || m === b.lastHit) continue;
       if (Math.hypot(b.x - m.x, b.y - m.y) < m.r * 0.92) {
-        b.dead = true;
         hitMeteor(m);
-        break;
+        // PIERCING BOLTS keep going until they run out of punch
+        if (b.pierce > 0) {
+          b.pierce--;
+          b.lastHit = m;
+        } else {
+          b.dead = true;
+          break;
+        }
       }
     }
   }
@@ -766,6 +815,17 @@ function updateTwists(dt) {
     const step = (COURSE_X - g.courseX) * Math.min(1, dt * 1.5);
     g.courseX += step;
     g.courseVx = dt > 0 ? step / dt : 0;
+  }
+
+  // TURBULENCE: the course point bobs up and down
+  if (fx.bob) {
+    const w = 0.55;
+    g.courseY = COURSE_Y + Math.sin(g.levelTime * w) * fx.bob;
+    g.courseVy = Math.cos(g.levelTime * w) * w * fx.bob;
+  } else {
+    const step = (COURSE_Y - g.courseY) * Math.min(1, dt * 1.5);
+    g.courseY += step;
+    g.courseVy = dt > 0 ? step / dt : 0;
   }
 
   // SOLAR WIND: a sideways push on everything that flips every 10-14 seconds
@@ -990,14 +1050,15 @@ function updateInfinite(dt) {
     g.sectorTwist = pick(choices);
     g.cfg = infiniteConfig(g.playTime, g.sectorTwist);
     initTwistState();
+    rechargeShields();
     Sound.levelClear();
   }
   g.sectorBanner = Math.max(0, g.sectorBanner - dt);
 }
 
 // =========================================================
-// BLACK HOLE (level 25, the final level)
-// During level 25 the black hole sits in the distance and grows
+// BLACK HOLE (level 40, the final level)
+// During the final level the black hole sits in the distance and grows
 // as the wave goes on. When the wave is cleared the finale
 // starts: it moves in, its gravity pulls in the mothership,
 // the defender and a ring of meteors, stretching them

@@ -63,8 +63,14 @@ function blasterStats() {
     jamChance: heat => (0.015 + 0.07 * heat * heat) * (1 - 0.3 * up('jamguard')),
     jamTaps: Math.max(1, 3 - up('jamguard')),
     twin: up('twin') > 0,
+    boltSpeed: 640 * (1 + 0.1 * up('range')),
+    boltLife: 0.85 * (1 + 0.25 * up('range')),
+    pierce: up('pierce'),   // extra meteors each bolt can smash through
   };
 }
+
+// Extra credit from the SALVAGE DRONE: a 25% chance per level, per meteor.
+const salvageBonus = () => (Math.random() < 0.25 * up('salvage') ? 1 : 0);
 
 // Mothership upgrade multipliers.
 const motherStabMult = () => 1 - 0.2 * up('stabilizer');
