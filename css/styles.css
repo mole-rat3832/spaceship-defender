@@ -83,9 +83,15 @@ body {
   display: none;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* "safe" keeps the top reachable when a screen is taller than the game area */
+  justify-content: safe center;
   gap: 1.8cqw;
   padding: 3cqw;
+  /* Scroll if a screen doesn't fit (small windows, big minimum font sizes) */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
   text-align: center;
   background: radial-gradient(ellipse at center, rgba(2, 4, 16, 0.45) 0%, rgba(0, 0, 0, 0.8) 100%);
 }

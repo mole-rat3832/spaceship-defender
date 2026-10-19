@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=2">
 </head>
 <body>
   <!--
@@ -242,18 +242,20 @@
   </div>
 
   <!-- Load order matters: each file can use anything defined in the files above it.
+       The ?v=N on each file makes browsers download fresh copies after an update:
+       bump N (in every link) whenever you publish changes.
        See the comment at the top of js/core/utils.js for what each file does. -->
-  <script src="js/core/utils.js"></script>
-  <script src="js/core/config.js"></script>
-  <script src="js/core/progress.js"></script>
-  <script src="js/audio/sound.js"></script>
-  <script src="js/gfx/sprites.js"></script>
-  <script src="js/gfx/space.js"></script>
-  <script src="js/game/entities.js"></script>
-  <script src="js/game/game.js"></script>
-  <script src="js/game/render.js"></script>
-  <script src="js/ui/menu.js"></script>
-  <script src="js/input.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/core/utils.js?v=2"></script>
+  <script src="js/core/config.js?v=2"></script>
+  <script src="js/core/progress.js?v=2"></script>
+  <script src="js/audio/sound.js?v=2"></script>
+  <script src="js/gfx/sprites.js?v=2"></script>
+  <script src="js/gfx/space.js?v=2"></script>
+  <script src="js/game/entities.js?v=2"></script>
+  <script src="js/game/game.js?v=2"></script>
+  <script src="js/game/render.js?v=2"></script>
+  <script src="js/ui/menu.js?v=2"></script>
+  <script src="js/input.js?v=2"></script>
+  <script src="js/main.js?v=2"></script>
 </body>
 </html>

@@ -81,6 +81,9 @@ const Menu = {
   // Highlight the selected row and show its hint text.
   render() {
     this.items.forEach((it, i) => it.classList.toggle('selected', i === this.index));
+    // If the screen is scrolled, keep the highlighted row on screen
+    const sel = this.items[this.index];
+    if (sel && this.current.scrollHeight > this.current.clientHeight) sel.scrollIntoView({ block: 'nearest' });
     const hint = this.current.querySelector('.hint');
     if (hint && !capture) {
       hint.classList.remove('bad');
