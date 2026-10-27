@@ -1,33 +1,24 @@
 'use strict';
 
-/* =========================================================
-   PROGRESS - everything that is saved between sessions:
-   unlocked levels, high scores, credits, shop purchases and
-   the daily quests. Saved in the browser's localStorage.
-   ========================================================= */
-
 const DEFAULT_PROGRESS = {
-  unlocked: 1,          // highest mission level the player may pick
-  highScore: 0,         // best score in mission mode
-  infiniteBest: 0,      // best score in Infinite Voyage
-  bestDistance: 0,      // furthest distance (light-years) in Infinite Voyage
-  credits: 0,           // shop currency
-  upgrades: {},         // { upgradeId: level }
-  skins: ['standard'],  // paint jobs the player owns
-  skin: 'standard',     // paint job currently equipped
-  daily: null,          // today's quests (see ensureDaily)
+  unlocked: 1,
+  highScore: 0,
+  infiniteBest: 0,
+  bestDistance: 0,
+  credits: 0,
+  upgrades: {},
+  skins: ['standard'],
+  skin: 'standard',
+  daily: null,
 };
 
 const progress = Object.assign({}, DEFAULT_PROGRESS, Store.load('sd-progress', {}));
 
-// Repair anything missing or broken in old/corrupted saves.
 progress.unlocked = clamp(progress.unlocked | 0, 1, MAX_LEVEL);
 if (!progress.upgrades || typeof progress.upgrades !== 'object') progress.upgrades = {};
 if (!Array.isArray(progress.skins)) progress.skins = ['standard'];
 if (!SKINS[progress.skin] || !progress.skins.includes(progress.skin)) progress.skin = 'standard';
 
-// Saving on every meteor kill would be wasteful, so changes just mark the
-// save as "dirty" and main.js writes it out every couple of seconds.
 let progressDirty = false;
 const markDirty = () => (progressDirty = true);
 
@@ -37,22 +28,15 @@ function saveProgress() {
 }
 
 function resetProgress() {
-  const daily = progress.daily; // keep today's quests so they can't be re-rolled
+  const daily = progress.daily;
   Object.assign(progress, JSON.parse(JSON.stringify(DEFAULT_PROGRESS)), { daily });
   saveProgress();
 }
 
-// ---------- Upgrade effects ----------
-const up = id => progress.upgrades[id] || 0;       // current level of an upgrade
+const up = id => progress.upgrades[id] || 0;
 const skin = () => SKINS[progress.skin];
 const maxHits = () => BASE_HITS + up('hull');
 
-// All the blaster numbers, with shop upgrades applied.
-// HEAT: every shot adds heatPerShot. Heat drains at coolRate while firing and
-// faster (coolRate + idleCool) once you stop. Reaching 100% = overheat, and you
-// can't fire until it drops back to 30%. This is what stops endless spamming.
-// JAM: each shot has a small chance to jam, higher when the blaster is hot.
-// A jammed blaster won't fire until the player taps F jamTaps times.
 function blasterStats() {
   const cool = up('cooling');
   return {
@@ -65,14 +49,12 @@ function blasterStats() {
     twin: up('twin') > 0,
     boltSpeed: 640 * (1 + 0.1 * up('range')),
     boltLife: 0.85 * (1 + 0.25 * up('range')),
-    pierce: up('pierce'),   // extra meteors each bolt can smash through
+    pierce: up('pierce'),
   };
 }
 
-// Extra credit from the SALVAGE DRONE: a 25% chance per level, per meteor.
 const salvageBonus = () => (Math.random() < 0.25 * up('salvage') ? 1 : 0);
 
-// Mothership upgrade multipliers.
 const motherStabMult = () => 1 - 0.2 * up('stabilizer');
 const motherArmorMult = () => 1 - 0.12 * up('armor');
 
@@ -82,18 +64,8 @@ function addCredits(n) {
   markDirty();
 }
 
-// =========================================================
-// DAILY QUESTS
-// Three quests are picked each day. The pick is seeded by the
-// date, so everyone gets the same quests on the same day and
-// reloading the page can't re-roll them. Progress is tracked
-// through questEvent() calls sprinkled through the game code.
-// =========================================================
-const DAILY_BONUS = 250; // extra credits for finishing all three
+const DAILY_BONUS = 250;
 
-// id      = the event name passed to questEvent()
-// mode    = 'add' counts up; 'max' keeps the best single value (e.g. score in one game)
-// targets = possible goals; reward[i] matches targets[i]
 const QUEST_POOL = [
   { id: 'kill',     mode: 'add', text: n => `DESTROY ${n} METEORS`,             targets: [40, 60, 90],       reward: [100, 140, 200] },
   { id: 'magma',    mode: 'add', text: n => `DESTROY ${n} MAGMA METEORS`,       targets: [8, 12, 18],        reward: [120, 160, 220] },
@@ -108,13 +80,11 @@ const QUEST_POOL = [
 ];
 const QUEST_MAP = Object.fromEntries(QUEST_POOL.map(q => [q.id, q]));
 
-// Today's date as 'YYYY-MM-DD' in the player's local time zone.
 function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1, 2)}-${pad(d.getDate(), 2)}`;
 }
 
-// Make sure progress.daily holds today's quests, generating new ones after midnight.
 function ensureDaily() {
   const key = todayKey();
   if (progress.daily && progress.daily.date === key) return;
@@ -133,8 +103,6 @@ function ensureDaily() {
 
 const questText = q => QUEST_MAP[q.id].text(q.target);
 
-// Report that something quest-worthy happened, e.g. questEvent('kill').
-// For 'max' quests pass the new value, e.g. questEvent('score', 4200).
 function questEvent(id, amount = 1) {
   ensureDaily();
   const daily = progress.daily;
@@ -157,7 +125,6 @@ function questEvent(id, amount = 1) {
   }
 }
 
-// "hh:mm:ss" until local midnight (when new quests appear).
 function timeUntilMidnight() {
   const now = new Date();
   const midnight = new Date(now);

@@ -1,19 +1,5 @@
 'use strict';
 
-/* =========================================================
-   INPUT - keyboard and mouse.
-
-   Keys are stored as KeyboardEvent.code values ('KeyA',
-   'ArrowLeft', 'Space', ...). Mouse buttons use the made-up
-   codes 'Mouse0' (left), 'Mouse1' (middle), 'Mouse2' (right)
-   so they can be rebound exactly like keys.
-
-   `keys` holds which HELD actions are currently down
-   (movement + fire). One-shot actions (fix jam, pause) run
-   immediately when pressed.
-   ========================================================= */
-
-// Actions the player can rebind, in the order shown in the menu.
 const BIND_ACTIONS = [
   { id: 'up',    label: 'UP / THRUST' },
   { id: 'down',  label: 'DOWN / BRAKE' },
@@ -29,12 +15,11 @@ const DEFAULT_KEYBINDS = {
   down:  ['KeyS', 'ArrowDown'],
   left:  ['KeyA', 'ArrowLeft'],
   right: ['KeyD', 'ArrowRight'],
-  fire:  ['Space', 'Mouse0'],   // left-click fires by default
+  fire:  ['Space', 'Mouse0'],
   fix:   ['KeyF', null],
   pause: ['KeyP', 'Escape'],
 };
 
-// Load saved keybinds, falling back to defaults for anything missing/broken.
 const keybinds = (() => {
   const saved = Store.load('sd-keys', {});
   const out = {};
@@ -52,15 +37,12 @@ function resetKeybinds() {
   saveKeybinds();
 }
 
-// Give an action new keys. If another action was using one of them, it loses it.
-// Returns the labels of actions that lost a key, so the menu can warn the player.
 function assignKeys(action, first, second) {
   const moved = [];
   for (const [id, codes] of Object.entries(keybinds)) {
     if (id === action) continue;
     const kept = codes.map(c => (c && (c === first || c === second) ? null : c));
     if (kept.join() !== codes.join()) moved.push(BIND_ACTIONS.find(b => b.id === id).label);
-    // Keep the remaining key in the first slot
     keybinds[id] = kept[0] ? kept : [kept[1], null];
   }
   keybinds[action] = [first, second];
@@ -68,13 +50,11 @@ function assignKeys(action, first, second) {
   return moved;
 }
 
-// Which action (if any) is bound to this key code?
 function actionForCode(code) {
   for (const [id, codes] of Object.entries(keybinds)) if (codes.includes(code)) return id;
   return null;
 }
 
-// Human-readable key names for the HUD and menus.
 const KEY_NAMES = {
   Space: 'SPACE', Enter: 'ENTER', Escape: 'ESC', Tab: 'TAB', Backspace: 'BKSP', CapsLock: 'CAPS',
   ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', ArrowUp: 'UP', ArrowDown: 'DOWN',
@@ -94,18 +74,13 @@ function keyLabel(code) {
   return code.toUpperCase();
 }
 
-// ---------- Live input state ----------
 const keys = { left: false, right: false, up: false, down: false, fire: false };
 const clearKeys = () => Object.keys(keys).forEach(k => (keys[k] = false));
 
-// Mouse position in game coordinates (0..W, 0..H), used by MOUSE AIM.
 const mouse = { x: W / 2, y: H / 2, inside: false };
 
-// While rebinding, the next key/button press goes to this object instead of the game.
-// Set by startBind() in menu.js: { assign(code), cancel() }
 let capture = null;
 
-// Run the action bound to a key/button being pressed during play.
 function pressAction(action, repeat) {
   if (action === 'pause') {
     if (!repeat) pauseGame();
@@ -116,11 +91,10 @@ function pressAction(action, repeat) {
   }
 }
 
-// ---------- Keyboard ----------
 const PAGE_KEYS = ['Space', 'Enter', 'Escape', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
 window.addEventListener('keydown', e => {
-  Sound.init(); // browsers only allow audio after a user gesture
+  Sound.init();
 
   if (capture) {
     e.preventDefault();
@@ -131,14 +105,13 @@ window.addEventListener('keydown', e => {
   }
 
   const action = actionForCode(e.code);
-  if (action || PAGE_KEYS.includes(e.code)) e.preventDefault(); // stop the page scrolling
+  if (action || PAGE_KEYS.includes(e.code)) e.preventDefault();
 
   if (Menu.current) {
     Menu.handleKey(e);
     return;
   }
   if (mode === 'game') {
-    // ESC always pauses, even if the player rebound PAUSE to something else
     if (e.code === 'Escape' && action !== 'pause') {
       if (!e.repeat) pauseGame();
       return;
@@ -152,7 +125,6 @@ window.addEventListener('keyup', e => {
   if (action in keys) keys[action] = false;
 });
 
-// ---------- Mouse ----------
 function updateMousePos(e) {
   const r = canvas.getBoundingClientRect();
   mouse.x = ((e.clientX - r.left) / r.width) * W;
@@ -164,7 +136,7 @@ canvas.addEventListener('mousemove', e => {
   mouse.inside = true;
 });
 canvas.addEventListener('mouseleave', () => (mouse.inside = false));
-canvas.addEventListener('contextmenu', e => e.preventDefault()); // right-click can be bound
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 window.addEventListener('mousedown', e => {
   Sound.init();
@@ -173,13 +145,10 @@ window.addEventListener('mousedown', e => {
   if (capture) {
     e.preventDefault();
     capture.assign(code);
-    // A left press is followed by a 'click' event - swallow it so it doesn't
-    // also press whatever menu row is under the cursor
     if (e.button === 0) window.addEventListener('click', ev => ev.stopPropagation(), { capture: true, once: true });
     return;
   }
 
-  // Menus handle their own clicks; in-game clicks land on the canvas
   if (mode === 'game' && !Menu.current && e.target === canvas) {
     updateMousePos(e);
     const action = actionForCode(code);
@@ -192,8 +161,6 @@ window.addEventListener('mouseup', e => {
   if (action in keys) keys[action] = false;
 });
 
-// ---------- Losing focus ----------
-// Releasing all keys avoids "stuck" movement when the window loses focus.
 function onFocusLost() {
   clearKeys();
   if (settings.autoPause && mode === 'game') pauseGame();

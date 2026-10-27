@@ -11,18 +11,9 @@
   <link rel="stylesheet" href="css/styles.css?v=2">
 </head>
 <body>
-  <!--
-    The game is drawn on the <canvas>. Every <div class="screen"> is an HTML
-    menu layered on top of it; js/ui/menu.js shows one at a time.
-    Rows with class "item" are selectable:
-      data-action="..."  runs that action (see ACTIONS in js/ui/menu.js)
-      data-setting="..." is an option you change with left/right
-      data-hint="..."    text shown at the bottom while the row is selected
-  -->
   <div id="wrap">
     <canvas id="game"></canvas>
 
-    <!-- ============ MAIN MENU ============ -->
     <div class="screen" id="menu-main">
       <h1 class="title">SPACESHIP<br>DEFENDER</h1>
       <p class="subtitle">KEEP THE MOTHERSHIP ON COURSE</p>
@@ -43,7 +34,6 @@
       <p class="navhint">ARROWS / WASD TO SELECT &middot; ENTER OR SPACE TO CONFIRM &middot; MOUSE WORKS TOO</p>
     </div>
 
-    <!-- ============ LEVEL SELECT ============ -->
     <div class="screen" id="menu-levels" data-cols="8" data-escape="back">
       <h2>LEVEL SELECT</h2>
       <div class="level-grid" id="level-grid"></div>
@@ -54,7 +44,6 @@
       <p class="navhint">40 LEVELS, EACH WITH ITS OWN TWIST &middot; CLEAR A LEVEL TO UNLOCK THE NEXT</p>
     </div>
 
-    <!-- ============ SHOP ============ -->
     <div class="screen" id="menu-shop" data-escape="back">
       <h2>HANGAR SHOP</h2>
       <div class="shop-top">
@@ -68,7 +57,6 @@
       <p class="hint"></p>
     </div>
 
-    <!-- ============ DAILY QUESTS ============ -->
     <div class="screen" id="menu-quests" data-escape="back">
       <h2>DAILY QUESTS</h2>
       <p class="subtitle">NEW QUESTS IN <span id="quest-reset">00:00:00</span></p>
@@ -79,7 +67,6 @@
       </div>
     </div>
 
-    <!-- ============ SETTINGS HUB ============ -->
     <div class="screen" id="menu-settings" data-escape="back">
       <h2>SETTINGS</h2>
       <div class="items">
@@ -93,7 +80,6 @@
       <p class="hint"></p>
     </div>
 
-    <!-- ============ SETTINGS: GAMEPLAY ============ -->
     <div class="screen" id="menu-set-gameplay" data-escape="back">
       <h2>GAMEPLAY</h2>
       <div class="settings-list">
@@ -110,18 +96,16 @@
       <p class="hint"></p>
     </div>
 
-    <!-- ============ SETTINGS: CONTROLS ============ -->
     <div class="screen" id="menu-set-controls" data-escape="back">
       <h2>CONTROLS</h2>
       <div class="settings-list">
-        <div class="item option" data-setting="controls" data-hint="CLASSIC: ROTATE + THRUST LIKE THE ARCADE. DIRECT: MOVE ANY DIRECTION. MOUSE AIM: MOVE WITH KEYS, AIM WITH THE MOUSE, LEFT-CLICK TO FIRE."><span>CONTROL STYLE</span><span class="value"></span></div>
+        <div class="item option" data-setting="controls" data-hint="CLASSIC: ROTATE + THRUST LIKE THE ARCADE. DIRECT: MOVE ANY DIRECTION. MOUSE AIM: MOVE WITH KEYS, AIM WITH THE MOUSE, LEFT-CLICK TO FIRE."><span>CONTROL TYPE</span><span class="value"></span></div>
         <div class="item center" data-action="keybinds" data-hint="CHANGE WHICH KEYS OR MOUSE BUTTONS DO WHAT.">CUSTOMIZE KEYS</div>
         <div class="item center" data-action="back" data-hint="">BACK</div>
       </div>
       <p class="hint"></p>
     </div>
 
-    <!-- ============ SETTINGS: KEYBINDS ============ -->
     <div class="screen" id="menu-keybinds" data-escape="back">
       <h2>CUSTOMIZE KEYS</h2>
       <div class="bind-head"><span>ACTION</span><span>KEY 1 &nbsp; KEY 2</span></div>
@@ -133,7 +117,6 @@
       <p class="hint"></p>
     </div>
 
-    <!-- ============ SETTINGS: GRAPHICS ============ -->
     <div class="screen" id="menu-set-graphics" data-escape="back">
       <h2>GRAPHICS</h2>
       <div class="settings-list">
@@ -149,7 +132,6 @@
       <p class="hint"></p>
     </div>
 
-    <!-- ============ SETTINGS: AUDIO ============ -->
     <div class="screen" id="menu-set-audio" data-escape="back">
       <h2>AUDIO</h2>
       <div class="settings-list">
@@ -162,7 +144,6 @@
       <p class="hint"></p>
     </div>
 
-    <!-- ============ HOW TO PLAY ============ -->
     <div class="screen" id="menu-help" data-escape="back">
       <h2>HOW TO PLAY</h2>
       <div class="help">
@@ -201,7 +182,6 @@
       </div>
     </div>
 
-    <!-- ============ PAUSE ============ -->
     <div class="screen" id="menu-pause" data-escape="resume">
       <h2>PAUSED</h2>
       <div class="items">
@@ -212,7 +192,6 @@
       </div>
     </div>
 
-    <!-- ============ GAME OVER ============ -->
     <div class="screen" id="menu-over">
       <h2 id="over-title" class="danger">GAME OVER</h2>
       <p class="reason" id="over-reason"></p>
@@ -225,7 +204,6 @@
       </div>
     </div>
 
-    <!-- ============ VICTORY (after the level 40 black hole) ============ -->
     <div class="screen" id="menu-victory">
       <h2>THE END...?</h2>
       <p class="reason">THE MOTHERSHIP MADE IT THROUGH THE BELT - STRAIGHT INTO A BLACK HOLE. THE MOTHERSHIP, YOUR DEFENDER AND EVERY METEOR AROUND THEM WERE SWALLOWED WHOLE. WHERE DID THEY GO? NOBODY KNOWS.</p>
@@ -241,10 +219,6 @@
     <div id="crt"></div>
   </div>
 
-  <!-- Load order matters: each file can use anything defined in the files above it.
-       The ?v=N on each file makes browsers download fresh copies after an update:
-       bump N (in every link) whenever you publish changes.
-       See the comment at the top of js/core/utils.js for what each file does. -->
   <script src="js/core/utils.js?v=2"></script>
   <script src="js/core/config.js?v=2"></script>
   <script src="js/core/progress.js?v=2"></script>

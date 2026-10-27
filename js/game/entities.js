@@ -1,60 +1,44 @@
 'use strict';
 
-/* =========================================================
-   ENTITIES - functions that create game objects, plus the
-   particle effects (sparks, smoke, debris, shockwaves) and
-   floating score text.
+let particles = [];
+let floaters = [];
 
-   All objects are plain JavaScript objects with x/y position
-   and vx/vy velocity (pixels per second). game.js moves them
-   and render.js draws them.
-   ========================================================= */
-
-let particles = []; // visual effects only - they never collide with anything
-let floaters = [];  // floating "+100" text
-
-// ---------- Defender (the player's ship) ----------
 function newPlayer() {
   return {
     x: COURSE_X, y: COURSE_Y + 110, vx: 0, vy: 0,
-    a: -Math.PI / 2,       // facing angle (radians); -PI/2 = pointing up
-    r: 10,                 // collision radius
-    cooldown: 0,           // seconds until the blaster can fire again
-    heat: 0,               // blaster heat 0..1
-    overheated: false,     // true = locked out until heat drops to 30%
-    jammed: false,         // true = must tap FIX JAM to fire again
-    jamLeft: 0,            // taps still needed to clear the jam
-    lastShot: 1,           // seconds since the last shot (cooling is faster when idle)
-    invuln: 2,             // seconds of invulnerability (after spawning or being hit)
+    a: -Math.PI / 2,
+    r: 10,
+    cooldown: 0,
+    heat: 0,
+    overheated: false,
+    jammed: false,
+    jamLeft: 0,
+    lastShot: 1,
+    invuln: 2,
     alive: true,
-    respawn: 0,            // countdown to respawn after being hit
+    respawn: 0,
     thrusting: false,
-    captured: false,       // swallowed by the black hole (final level finale)
-    stretch: null,         // squash/stretch while falling into the black hole
-  };
-}
-
-// ---------- Mothership ----------
-function newMother() {
-  return {
-    x: COURSE_X, y: COURSE_Y, vx: 0, vy: 0,
-    a: 0, va: 0,           // tilt angle and spin speed
-    r: 34,                 // collision radius
-    destab: 0,             // seconds left with autopilot offline after a hit
-    flash: 0,              // red hit-flash timer
-    dev: 0,                // current distance from the course point
     captured: false,
     stretch: null,
   };
 }
 
-// ---------- Meteors ----------
-// type: 'rock' | 'magma' | 'iron' | 'comet'    size: 3 (large), 2, 1 (small)
-// extraHp: bonus hits on top of the normal amount (HARDENED twist)
+function newMother() {
+  return {
+    x: COURSE_X, y: COURSE_Y, vx: 0, vy: 0,
+    a: 0, va: 0,
+    r: 34,
+    destab: 0,
+    flash: 0,
+    dev: 0,
+    captured: false,
+    stretch: null,
+  };
+}
+
 function makeMeteor(x, y, vx, vy, size, type, extraHp = 0) {
   const r = METEOR_RADIUS[size];
 
-  // Random lumpy outline: points around a circle at random distances
   const n = type === 'comet' ? 7 : Math.floor(rand(9, 13));
   const shape = [];
   for (let i = 0; i < n; i++) {
@@ -63,13 +47,10 @@ function makeMeteor(x, y, vx, vy, size, type, extraHp = 0) {
     shape.push([Math.cos(a) * rr, Math.sin(a) * rr]);
   }
 
-  // Hit points: magma takes 2 hits, iron takes more the bigger it is,
-  // and giants (size 4) take 2 extra hits on top of that
   let hp = type === 'magma' ? 2 : type === 'iron' ? Math.min(size, 3) : 1;
   if (size === 4) hp += 2;
   hp += extraHp;
 
-  // Crack lines that glow once a multi-hit meteor has been damaged
   const cracks = [];
   if (hp > 1) {
     for (let k = 0; k < 3; k++) {
@@ -89,20 +70,18 @@ function makeMeteor(x, y, vx, vy, size, type, extraHp = 0) {
     x, y, vx, vy, size, type, r, shape, cracks,
     rot: rand(0, TAU), spin: rand(-1.2, 1.2),
     hp, maxHp: hp,
-    flash: 0,              // white flash when hit
+    flash: 0,
     dead: false,
-    decor: false,          // true = scenery only (black hole finale), no score/collisions
-    harmless: false,       // true = doesn't have to be cleared to finish the level (mines, crates)
-    homing: false,         // true = steers toward the mothership (MAGNETIC twist)
-    phase: rand(0, TAU),   // where it is in its fade cycle (CLOAKED twist)
+    decor: false,
+    harmless: false,
+    homing: false,
+    phase: rand(0, TAU),
     stretch: null,
   };
   m.sprite = buildMeteorSprite(m);
   return m;
 }
 
-// Mines and supply crates live in the same list as meteors so they move and
-// collide the same way, but they use their own sprites and rules (game.js).
 function makeSpecial(type, x, y, vx, vy, r, sprite) {
   return {
     x, y, vx, vy, size: 1, type, r, shape: [], cracks: [],
@@ -115,13 +94,10 @@ function makeSpecial(type, x, y, vx, vy, r, sprite) {
 const makeMine = (x, y, vx, vy) => makeSpecial('mine', x, y, vx, vy, 15, mineSprite());
 const makeCrate = (x, y, vx, vy) => makeSpecial('crate', x, y, vx, vy, 14, crateSprite());
 
-// The GRAVITY WELL twist's planet: pulls meteors (and you) toward it.
 function makeWell() {
   return { x: W * 0.2, y: H * 0.32, r: 30, sprite: buildPlanetSprite(WELL_PLANET, 30, false) };
 }
 
-// ---------- Black hole (level 40, the final level) ----------
-// The accretion disk is a ring of glowing particles orbiting the hole.
 function makeBlackHole() {
   const disk = [];
   const colors = ['#fff3d6', '#ffcf7a', '#ff9a3d', '#ff6a2a', '#ffd9a8'];
@@ -130,24 +106,17 @@ function makeBlackHole() {
   }
   return {
     x: W / 2, y: 110,
-    r: 6, targetR: 6,       // event horizon radius (grows as the level goes on)
+    r: 6, targetR: 6,
     targetY: 110,
     disk,
-    pull: 0,                // 0..1 gravity strength during the finale
+    pull: 0,
     collapsing: false,
     collapseT: 0,
   };
 }
 
-// =========================================================
-// PARTICLES
-// kind: 'spark'  - glowing dot (additive blend)
-//       'debris' - spinning line segment
-//       'smoke'  - soft gray puff that grows and fades
-//       'ring'   - expanding shockwave circle
-// =========================================================
 const MAX_PARTICLES = 900;
-const particleScale = () => (highQuality() ? 1 : 0.4); // LOW graphics = fewer particles
+const particleScale = () => (highQuality() ? 1 : 0.4);
 
 function addParticle(p) {
   if (particles.length < MAX_PARTICLES) particles.push(p);
@@ -187,7 +156,6 @@ function shockwave(x, y, radius, color, life = 0.45) {
   addParticle({ kind: 'ring', x, y, vx: 0, vy: 0, r0: 4, r1: radius, life, max: life, color });
 }
 
-// A full explosion: flash + shockwave + sparks + debris + smoke. size 1..3
 function explode(x, y, size, color) {
   addParticle({ kind: 'spark', x, y, vx: 0, vy: 0, life: 0.18, max: 0.18, color: '#ffffff', size: 16 + size * 8 });
   shockwave(x, y, 18 + size * 16, color);
@@ -210,7 +178,6 @@ function updateParticles(dt) {
   particles = particles.filter(p => p.life > 0);
 }
 
-// ---------- Floating text ----------
 function addFloater(text, x, y, color, size = 9) {
   if (!settings.popups) return;
   floaters.push({ text, x, y, color, size, life: 1.1, max: 1.1 });
